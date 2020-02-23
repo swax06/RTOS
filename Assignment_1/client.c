@@ -6,6 +6,8 @@
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<string.h>
+#include<pthread.h>
+#include<time.h>
 
 int myRead(int sd, char *buff) {
 	int i = 0;
@@ -47,15 +49,17 @@ int main(){
 	pthread_create(&thread_id, NULL, reader, p);
 	
 	while(1) {
+		buff[0]=0;
 		gets(buff); 
 		write(sd,buff,strlen(buff));
 		write(sd,"\0",1);
 		if(strcmp(buff, "-exit") == 0){
+			close(sd);
 			break;
 		}
 	}
 	
-	close(sd);
+	
 
 	return 0;
 }
