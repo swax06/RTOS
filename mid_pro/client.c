@@ -8,6 +8,9 @@
 #include<string.h>
 #include<pthread.h>
 #include<time.h>
+#include<pulse/pulseaudio.h>
+#include<pulse/simple.h>
+#include<pulse/error.h>
 
 int myRead(int sd, char *buff) {
 	int i = 0;
@@ -32,6 +35,31 @@ void* reader(void* input) {
 	}
 }
 int main(int argc, char **argv){
+	static const pa_sample_spec ss = {
+        .format = PA_SAMPLE_S16LE,
+        .rate = 44100,
+        .channels = 2
+    };
+
+	pa_simple *s;
+	int error;
+	
+	if (!(s = pa_simple_new(NULL, "VoIP" , PA_STREAM_PLAYBACK, NULL, "playback", &ss, NULL, NULL, &error))) {
+        fprintf(stderr, __FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
+        return 34;
+    }
+
+	unsigned long buff12[1024];
+	int i;
+	for(i=0;i<1024;i++){
+		buff12[i]=i;
+	}
+
+	pa_simple_write(s,buff12,sizeof(buff12),&error);
+
+	return 35;
+
+
 	struct sockaddr_in server;
 	int sd,msgLength;
 	char buff[50];
