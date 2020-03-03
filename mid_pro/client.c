@@ -37,20 +37,20 @@ int myRead(int sd, char *buff) {
 void handle_sigint(int sig) { 
     printf("Caught signal %d\n", sig); 
 	if(sig == 2 && !inCall){
-		write(sd,"-exit\0",5);
+		write(sd,"-exit\0",6);
 		close(sd);
 		exit(0);
 	}
 	if(sig == 2 && inCall){
 		inCall = false;
-		write(sd,"-call ended\0",strlen("-call ended") + 1);
 	}
 } 
 
 void inpCall() {
 	pa_simple *s_read;
-	char buff12[1024];
+	char buff12[256];
 	int error;
+	printf("initializing mic\n");
 	if (!(s_read = pa_simple_new(NULL, "VoIP" , PA_STREAM_RECORD , NULL, "record", &ss, NULL, NULL, &error))) {
         fprintf(stderr, __FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
     }
@@ -61,43 +61,49 @@ void inpCall() {
 		}
 		write(sd, buff12, sizeof(buff12));
 	}
+	
 }
 
 void outCall() {
-	char buff12[1024];
+	char buff12[256];
 	int error;
 	pa_simple *s_write;
+	printf("initializing speakers\n");
 	if (!(s_write = pa_simple_new(NULL, "VoIP" , PA_STREAM_PLAYBACK, NULL, "playback", &ss, NULL, NULL, &error))) {
         fprintf(stderr, __FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
     }
+	while(!inCall);
 	while(inCall){
 		read(sd, buff12, sizeof(buff12));
-		if(strcmp(buff12, "-call ended")){
-			inCall = false;
-			printf("Call ended..\n");
-		}
 		if(pa_simple_write(s_write,buff12,sizeof(buff12),&error)<0){
 			fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
 		}
+		if(strcmp(buff12, "-call ended") == 0) {
+			inCall = false;
+			return;
+		}
 	}
+	char temp1[256] = "-call ended\0";
+	write(sd,temp1,256);
 }
 void* reader(void* input) {
-	int *pt = (int*) input;
-	char buff[200];
+	char buff[1024];
 	while(1){
-		myRead(*pt, buff);
+		myRead(sd, buff);
 		printf("%s\n",buff);
-		if(strcmp(buff, "-call connected") == 0 || strcmp(buff, "-incoming call") == 0) {
-			printf("call coming\npress enter to start\n");
+		if(strcmp(buff, "-call connected") == 0) {
 			inCall = true;
-			outCall();
+			inpCall();
 		}
-		if(strcmp(buff, "-call end") == 0){
+		if(strcmp(buff, "-incoming call") == 0){
+			printf("call incoming\nenter -yes to start\nenter -no to stop\n");
+		}
+		if(strcmp(buff, "-call ended") == 0){
 			inCall = false;
 		}
 	}
 }
-int main(/*int argc, char **argv*/){
+int main(int argc, char **argv){
 	signal(SIGINT, handle_sigint); 
 	struct sockaddr_in server;
 	int msgLength;
@@ -109,8 +115,8 @@ int main(/*int argc, char **argv*/){
 	sd = socket(AF_INET,SOCK_STREAM,0);
 	int *p = &sd;
 	server.sin_family=AF_INET;
-	server.sin_addr.s_addr=inet_addr("127.0.0.1"/*argv[1]*/); //same machine
-	server.sin_port=htons(/*atoi(argv[2])*/5555);
+	server.sin_addr.s_addr=inet_addr(/*"127.0.0.1"*/argv[1]); //same machine
+	server.sin_port=htons(atoi(argv[2])/*5555*/);
 	connect(sd,(struct sockaddr *)&server,sizeof(server));
 	printf("Enter your name:\n");
 	pthread_create(&thread_id, NULL, reader, p);
@@ -123,10 +129,13 @@ int main(/*int argc, char **argv*/){
 			close(sd);
 			break;
 		}
+		if(strcmp(buff, "-yes") == 0){
+			//inCall = true;
+			outCall();
+		}
 		if(k){
 			k = false;
-			printf("Call Started\n");
-			inpCall();
+			outCall();
 		}
 		if(strcmp(buff, "-call") == 0) {
 			k = true;
