@@ -4,6 +4,7 @@
 #include<sys/socket.h>
 #include<netinet/in.h>
 #include<unistd.h>
+#include<signal.h> 
 #include<stdbool.h>
 #include<string.h>
 #include<fcntl.h>
@@ -12,8 +13,16 @@
 #include<time.h>
 
 int cli = 0;
+void handle_sigint(int sig){ 
+    printf("Caught signal %d\n", sig); 
+	if(sig == 2){
+		exit(0);
+	}
+}
+int temp_sid;
 struct args{
 	int sid;
+	bool inCall;
 	char name[10];
 	int gp[10],g;
 } clients[200];
@@ -37,7 +46,8 @@ int myRead(int sd, char *buff) {
 	}
 	return 0;
 }
-void del_entry(int sid){
+
+int findIndex(int sid) {
 	int j = 0;
 	while(1) {
 		if(sid == clients[j].sid) {
@@ -45,6 +55,11 @@ void del_entry(int sid){
 		}
 		j++;
 	}
+	return j;
+}
+
+void del_entry(int sid){
+	int j = findIndex(sid);
 	while(j < cli) {
 		clients[j].sid = clients[j + 1].sid;
 		strcpy(clients[j].name,clients[j + 1].name);
@@ -53,6 +68,7 @@ void del_entry(int sid){
 
 	cli--;
 }
+
 void send_names(int sid){
 	int j = 0;
 	char buff[50];
@@ -82,10 +98,12 @@ void send_groups(int sid){
 		i++;
 	}
 }
+
 void* client_handler(void* input) {
 	struct args ip = *(struct args*)input;
+	myRead(ip.sid, ((struct args*)input)->name);
 	strcpy(ip.name,((struct args*)input)->name);
-	char buff[200],buff1[200];
+	char buff[200],buff1[200],buff12[1024];
 	int j, cl = 1, i;
 	printf("%s connected\n", ip.name);
 	
@@ -141,13 +159,60 @@ void* client_handler(void* input) {
 			}
 
 		}
+		else if(strcmp(buff,"-yes") == 0) {
+			cl = temp_sid;
+			write(ip.sid,"-call connected\0",16);
+			while(1) {
+				read(ip.sid, buff12, sizeof(buff12));
+				write(cl, buff12, sizeof(buff12));
+				if(strcmp(buff12, "-call ended") == 0) {
+					break;
+				}
+			}
+		}
+		else if(strcmp(buff, "-call") == 0) {
+			send_names(ip.sid);
+			write(ip.sid, "server: select a user\0", 22);
+			myRead(ip.sid, buff);
+			if(strcmp(buff, "-exit") == 0){
+				close(ip.sid);
+				del_entry(ip.sid);
+				break;
+			}
+			if(buff[0] > '9' || buff[0] <= '0'){
+				continue;
+			}
+			cl = buff[0] - '0' - 1; 
+			if(clients[cl].inCall){
+				write(ip.sid, "server: person is busy\0", 23);
+				write(ip.sid, "-call ended\0",11);
+				continue;
+			}
+			cl = clients[cl].sid;
+			write(cl,"-incoming call\0", strlen("-incoming call") + 1);
+			// myRead(cl,buff);
+			// if(strcmp(buff,"-yes") == 1) {
+			// 	write(ip.sid,"-call ended\0",12);
+			// }
+			temp_sid = ip.sid;
+			clients[cl].inCall = true;
+			clients[findIndex(ip.sid)].inCall = true;
+			write(ip.sid,"-call connected\0",16);
+			while(1) {
+				read(ip.sid, buff12, sizeof(buff12));
+				write(cl, buff12, sizeof(buff12));
+				if(strcmp(buff12, "-call ended") == 0) {
+					break;
+				}
+			}
+			//printf("Call ended..\n");
+		}
 		else if(strcmp(buff, "-end") == 0) {
 			cl = 1;
 		}
 		else if(strcmp(buff, "-exit") == 0){
 			close(ip.sid);
 			del_entry(ip.sid);
-			printf("%s disconnected\n", ip.name);
 			break;
 		}
 		else if(strcmp(buff, "-make grp") == 0){
@@ -186,20 +251,21 @@ void* client_handler(void* input) {
 			write(cl,"\n\0",2);
 		}
 	}
-	
+	printf("%s disconnected\n", ip.name);
 	return NULL;
 }
 
 
-int main(int argc,char **argv){
+int main(/*int argc,char **argv*/){
+	signal(SIGINT, handle_sigint); 
 	struct sockaddr_in server, client;
 	pthread_t thread_ids[200];
 	int sd,clientLen;
 	char buff[10];
 	sd=socket(AF_INET,SOCK_STREAM,0);
 	server.sin_family=AF_INET;
-	server.sin_addr.s_addr=inet_addr(argv[1]);
-	server.sin_port=htons(atoi(argv[2]));
+	server.sin_addr.s_addr=inet_addr("127.0.0.1"/*argv[1]*/);
+	server.sin_port=htons(5555/*atoi(argv[2])*/);
 	bind(sd,(struct sockaddr *)&server,sizeof(server));
 	listen(sd,200);
 	write(1,"Waiting for the client.....\n", sizeof("Waiting for the client.....\n"));
@@ -208,9 +274,10 @@ int main(int argc,char **argv){
 		clientLen=sizeof(client);
 		temp_a = accept(sd, (struct sockaddr *)&client, &clientLen);
 		clients[cli].sid=temp_a;
-		myRead(clients[cli].sid, clients[cli].name);
+		//myRead(clients[cli].sid, clients[cli].name);
 		pthread_create(&thread_ids[cli], NULL, client_handler, (void *)&clients[cli]);
 		clients[cli].g = 0;
+		clients[cli].inCall = false;
 		cli++;
 	}
 	close(sd);
