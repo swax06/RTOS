@@ -103,7 +103,7 @@ void* client_handler(void* input) {
 	struct args ip = *(struct args*)input;
 	myRead(ip.sid, ((struct args*)input)->name);
 	strcpy(ip.name,((struct args*)input)->name);
-	char buff[200],buff1[200],buff12[1024];
+	char buff[200],buff1[200],buff12[256];
 	int j, cl = 1, i;
 	printf("%s connected\n", ip.name);
 	
@@ -162,6 +162,7 @@ void* client_handler(void* input) {
 		else if(strcmp(buff,"-yes") == 0) {
 			cl = temp_sid;
 			write(ip.sid,"-call connected\0",16);
+			write(cl,"-call connected\0",16);
 			while(1) {
 				read(ip.sid, buff12, sizeof(buff12));
 				write(cl, buff12, sizeof(buff12));
@@ -190,14 +191,9 @@ void* client_handler(void* input) {
 			}
 			cl = clients[cl].sid;
 			write(cl,"-incoming call\0", strlen("-incoming call") + 1);
-			// myRead(cl,buff);
-			// if(strcmp(buff,"-yes") == 1) {
-			// 	write(ip.sid,"-call ended\0",12);
-			// }
 			temp_sid = ip.sid;
 			clients[cl].inCall = true;
 			clients[findIndex(ip.sid)].inCall = true;
-			write(ip.sid,"-call connected\0",16);
 			while(1) {
 				read(ip.sid, buff12, sizeof(buff12));
 				write(cl, buff12, sizeof(buff12));
@@ -205,7 +201,6 @@ void* client_handler(void* input) {
 					break;
 				}
 			}
-			//printf("Call ended..\n");
 		}
 		else if(strcmp(buff, "-end") == 0) {
 			cl = 1;
@@ -256,7 +251,7 @@ void* client_handler(void* input) {
 }
 
 
-int main(/*int argc,char **argv*/){
+int main(int argc,char **argv){
 	signal(SIGINT, handle_sigint); 
 	struct sockaddr_in server, client;
 	pthread_t thread_ids[200];
@@ -264,8 +259,8 @@ int main(/*int argc,char **argv*/){
 	char buff[10];
 	sd=socket(AF_INET,SOCK_STREAM,0);
 	server.sin_family=AF_INET;
-	server.sin_addr.s_addr=inet_addr("127.0.0.1"/*argv[1]*/);
-	server.sin_port=htons(5555/*atoi(argv[2])*/);
+	server.sin_addr.s_addr=inet_addr(argv[1]);
+	server.sin_port=htons(atoi(argv[2]));
 	bind(sd,(struct sockaddr *)&server,sizeof(server));
 	listen(sd,200);
 	write(1,"Waiting for the client.....\n", sizeof("Waiting for the client.....\n"));

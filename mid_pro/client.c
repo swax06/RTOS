@@ -42,36 +42,30 @@ void handle_sigint(int sig) {
 		exit(0);
 	}
 	if(sig == 2 && inCall){
-		char temp1[1024] = "-call ended\0";
 		inCall = false;
-		write(sd,temp1,sizeof(temp1));
 	}
 } 
 
 void inpCall() {
 	pa_simple *s_read;
-	char buff12[1024];
+	char buff12[256];
 	int error;
 	printf("initializing mic\n");
 	if (!(s_read = pa_simple_new(NULL, "VoIP" , PA_STREAM_RECORD , NULL, "record", &ss, NULL, NULL, &error))) {
         fprintf(stderr, __FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
     }
 	while(!inCall);
-	// myRead(sd,buff12);
-	// if(strcmp(buff12,"call declined") == 0){
-	// 	printf("Call Declined\n");
-	// 	return;
-	// }
 	while(inCall){
 		if(pa_simple_read(s_read,buff12,sizeof(buff12),&error)<0){
 			fprintf(stderr, __FILE__": pa_simple_read() failed: %s\n", pa_strerror(error));
 		}
 		write(sd, buff12, sizeof(buff12));
 	}
+	
 }
 
 void outCall() {
-	char buff12[1024];
+	char buff12[256];
 	int error;
 	pa_simple *s_write;
 	printf("initializing speakers\n");
@@ -81,29 +75,28 @@ void outCall() {
 	while(!inCall);
 	while(inCall){
 		read(sd, buff12, sizeof(buff12));
-		if(strcmp(buff12, "-call ended") == 0){
-			inCall = false;
-			printf("Call ended..\n");
-		}
 		if(pa_simple_write(s_write,buff12,sizeof(buff12),&error)<0){
 			fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
 		}
+		if(strcmp(buff12, "-call ended") == 0) {
+			inCall = false;
+			return;
+		}
 	}
+	char temp1[256] = "-call ended\0";
+	write(sd,temp1,256);
 }
 void* reader(void* input) {
-	int *pt = (int*) input;
 	char buff[1024];
 	while(1){
-		myRead(*pt, buff);
-		//if(strlen(buff) != 1024)
-			printf("%s\n",buff);
+		myRead(sd, buff);
+		printf("%s\n",buff);
 		if(strcmp(buff, "-call connected") == 0) {
 			inCall = true;
 			inpCall();
 		}
 		if(strcmp(buff, "-incoming call") == 0){
 			printf("call incoming\nenter -yes to start\nenter -no to stop\n");
-			inpCall();
 		}
 		if(strcmp(buff, "-call ended") == 0){
 			inCall = false;
@@ -137,7 +130,7 @@ int main(int argc, char **argv){
 			break;
 		}
 		if(strcmp(buff, "-yes") == 0){
-			inCall = true;
+			//inCall = true;
 			outCall();
 		}
 		if(k){
