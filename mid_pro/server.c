@@ -19,7 +19,7 @@ void handle_sigint(int sig){
 		exit(0);
 	}
 }
-int temp_sid;
+int temp_ind;
 struct args{
 	int sid;
 	bool inCall;
@@ -72,9 +72,9 @@ void del_entry(int sid){
 void send_names(int sid){
 	int j = 0;
 	char buff[50];
-	write(sid, "online users:\n\0",15);
+	write(sid, "\nonline users:\0",15);
 	while(j < cli){
-		sprintf(buff,"%d: %s\n%c", j + 1, clients[j].name, '\0');
+		sprintf(buff,"%d: %s%c", j + 1, clients[j].name, '\0');
 		write(sid,buff,strlen(buff) + 1);
 		j++;
 	}
@@ -89,7 +89,7 @@ void send_groups(int sid){
 		}
 		j++;
 	}
-	write(sid, "your groups:\n\0",14);
+	write(sid, "\nyour groups:\0",14);
 	j = 0;
 	while(j < clients[t].g){
 		sprintf(buff,"%d: %s%c", j + 1, groups[clients[t].gp[i]].name, '\0');
@@ -106,120 +106,20 @@ void* client_handler(void* input) {
 	char buff[200],buff1[200],buff12[256];
 	int j, cl = 1, i;
 	printf("%s connected\n", ip.name);
+	bool *pt;
 	
 	while(1){
 		myRead(ip.sid, buff);
-		if(strcmp(buff, "-list users") == 0){
-			send_names(ip.sid);
-		}
-		else if(strcmp(buff, "-list grps") == 0){
-			send_groups(ip.sid);
-		}
-		else if(strcmp(buff, "-send msg") == 0){
-			send_names(ip.sid);
-			write(ip.sid, "server: select a user\0", 22);
-			myRead(ip.sid, buff);
-			if(strcmp(buff, "-exit") == 0){
-				close(ip.sid);
-				del_entry(ip.sid);
-				break;
+		if(buff[0] == '-'){
+			if(strcmp(buff, "-users") == 0){
+				send_names(ip.sid);
 			}
-			if(buff[0] > '9' || buff[0] <= '0'){
-				continue;
+			else if(strcmp(buff, "-groups") == 0){
+				send_groups(ip.sid);
 			}
-			cl = buff[0] - '0' - 1; 
-			cl = clients[cl].sid;
-			write(ip.sid,"connected\0",10);
-		}
-		else if(strcmp(buff, "-send grp msg") == 0){
-			send_groups(ip.sid);
-			write(ip.sid, "server: select a group\0", 23);
-			myRead(ip.sid,buff);
-			if(strcmp(buff, "-exit") == 0){
-				close(ip.sid);
-				del_entry(ip.sid);
-				break;
-			}
-			if(buff[0] > '9' || buff[0] <= '0'){
-				continue;
-			}
-			cl = buff[0] - '0' - 1; 
-			write(ip.sid, "connected to group\ntype -end to end conversation\0",49);
-			while (1){
-				myRead(ip.sid,buff);
-				if (strcmp(buff, "-end") == 0){
-					break;
-				}
-				i = 0;
-				while (i < groups[cl].count){
-					sprintf(buff1,"%s - %s : %s%c",groups[cl].name,ip.name,buff,'\0');
-					write(groups[cl].mem[i],buff1,strlen(buff1) + 1);
-					i++;
-				}
-			}
-
-		}
-		else if(strcmp(buff,"-yes") == 0) {
-			cl = temp_sid;
-			write(ip.sid,"-call connected\0",16);
-			write(cl,"-call connected\0",16);
-			while(1) {
-				read(ip.sid, buff12, sizeof(buff12));
-				write(cl, buff12, sizeof(buff12));
-				if(strcmp(buff12, "-call ended") == 0) {
-					break;
-				}
-			}
-		}
-		else if(strcmp(buff, "-call") == 0) {
-			send_names(ip.sid);
-			write(ip.sid, "server: select a user\0", 22);
-			myRead(ip.sid, buff);
-			if(strcmp(buff, "-exit") == 0){
-				close(ip.sid);
-				del_entry(ip.sid);
-				break;
-			}
-			if(buff[0] > '9' || buff[0] <= '0'){
-				continue;
-			}
-			cl = buff[0] - '0' - 1; 
-			if(clients[cl].inCall){
-				write(ip.sid, "server: person is busy\0", 23);
-				write(ip.sid, "-call ended\0",11);
-				continue;
-			}
-			cl = clients[cl].sid;
-			write(cl,"-incoming call\0", strlen("-incoming call") + 1);
-			temp_sid = ip.sid;
-			clients[cl].inCall = true;
-			clients[findIndex(ip.sid)].inCall = true;
-			while(1) {
-				read(ip.sid, buff12, sizeof(buff12));
-				write(cl, buff12, sizeof(buff12));
-				if(strcmp(buff12, "-call ended") == 0) {
-					break;
-				}
-			}
-		}
-		else if(strcmp(buff, "-end") == 0) {
-			cl = 1;
-		}
-		else if(strcmp(buff, "-exit") == 0){
-			close(ip.sid);
-			del_entry(ip.sid);
-			break;
-		}
-		else if(strcmp(buff, "-make grp") == 0){
-			write(ip.sid, "server: name your group", 23);
-			write(ip.sid, "\0", 1);
-			myRead(ip.sid, buff);
-			strcpy(groups[grp].name, buff);
-			send_names(ip.sid);
-			write(ip.sid, "server: select the users for group\nserver: type -end to exit selection", 70);
-			write(ip.sid, "\0", 1);
-			groups[grp].count = 0;
-			while(strcmp(buff, "-end") != 0){
+			else if(strcmp(buff, "-send msg") == 0){
+				send_names(ip.sid);
+				write(ip.sid, "server: select a user\0", 22);
 				myRead(ip.sid, buff);
 				if(strcmp(buff, "-exit") == 0){
 					close(ip.sid);
@@ -230,21 +130,133 @@ void* client_handler(void* input) {
 					continue;
 				}
 				cl = buff[0] - '0' - 1; 
-				clients[cl].gp[clients[cl].g] = grp;
-				clients[cl].g++;
 				cl = clients[cl].sid;
-				groups[grp].mem[groups[grp].count] = cl;
-				groups[grp].count++;
+				write(ip.sid,"connected\0",10);
 			}
-			grp++;
-			write(ip.sid,"server: group created\0",22);
+			else if(strcmp(buff, "-send grp msg") == 0){
+				send_groups(ip.sid);
+				write(ip.sid, "server: select a group\0", 23);
+				myRead(ip.sid,buff);
+				if(strcmp(buff, "-exit") == 0){
+					close(ip.sid);
+					del_entry(ip.sid);
+					break;
+				}
+				if(buff[0] > '9' || buff[0] <= '0'){
+					continue;
+				}
+				cl = buff[0] - '0' - 1; 
+				write(ip.sid, "connected to group\ntype -end to end conversation\0",49);
+				while (1){
+					myRead(ip.sid,buff);
+					if (strcmp(buff, "-end") == 0){
+						break;
+					}
+					i = 0;
+					while (i < groups[cl].count){
+						sprintf(buff1,"%s - %s : %s%c",groups[cl].name,ip.name,buff,'\0');
+						write(groups[cl].mem[i],buff1,strlen(buff1) + 1);
+						i++;
+					}
+				}
+			}
+			else if(strcmp(buff,"-no") == 0 && clients[findIndex(ip.sid)].inCall) {
+				write(clients[temp_ind].sid,"-call ended\0",12);
+				clients[temp_ind].inCall = false;
+				clients[findIndex(ip.sid)].inCall = false;
+			}
+			else if(strcmp(buff,"-yes") == 0 && clients[findIndex(ip.sid)].inCall) {
+				cl = clients[temp_ind].sid;
+				write(ip.sid,"-call connected\0",16);
+				write(cl,"-call connected\0",16);
+				temp_ind = findIndex(ip.sid);
+				// clients[temp_ind].inCall = true;
+				pt = &clients[temp_ind].inCall;
+				while(*pt) {
+					read(ip.sid, buff12, sizeof(buff12));
+					write(cl, buff12, sizeof(buff12));
+					if(strcmp(buff12, "-call ended") == 0) {
+						break;
+					}
+				}
+				cl = 1;
+			}
+			else if(strcmp(buff, "-call") == 0) {
+				temp_ind = findIndex(ip.sid);
+				clients[temp_ind].inCall = true;
+				send_names(ip.sid);
+				write(ip.sid, "server: select a user\0", 22);
+				myRead(ip.sid, buff);
+				if(strcmp(buff, "-exit") == 0){
+					close(ip.sid);
+					del_entry(ip.sid);
+					break;
+				}
+				if(buff[0] > '9' || buff[0] <= '0'){
+					write(ip.sid,"invalid input\0",14);
+					continue;
+				}
+				cl = buff[0] - '0' - 1; 
+				if(clients[cl].inCall){
+					write(ip.sid, "server: person is busy\0", 23);
+					write(ip.sid, "-call ended\0",11);
+					continue;
+				}
+				clients[cl].inCall = true;
+				cl = clients[cl].sid;
+				write(cl,"-incoming call\0", strlen("-incoming call") + 1);
+				pt = &clients[temp_ind].inCall;
+				while(*pt) {
+					read(ip.sid, buff12, sizeof(buff12));
+					write(cl, buff12, sizeof(buff12));
+					if(strcmp(buff12, "-call ended") == 0) {
+						break;
+					}
+				}
+				cl = 1;
+			}
+			else if(strcmp(buff, "-end") == 0) {
+				cl = 1;
+			}
+			else if(strcmp(buff, "-exit") == 0){
+				close(ip.sid);
+				del_entry(ip.sid);
+				break;
+			}
+			else if(strcmp(buff, "-make grp") == 0){
+				write(ip.sid, "server: name your group", 23);
+				write(ip.sid, "\0", 1);
+				myRead(ip.sid, buff);
+				strcpy(groups[grp].name, buff);
+				send_names(ip.sid);
+				write(ip.sid, "server: select the users for group\nserver: type -end to exit selection", 70);
+				write(ip.sid, "\0", 1);
+				groups[grp].count = 0;
+				while(strcmp(buff, "-end") != 0){
+					myRead(ip.sid, buff);
+					if(strcmp(buff, "-exit") == 0){
+						close(ip.sid);
+						del_entry(ip.sid);
+						break;
+					}
+					if(buff[0] > '9' || buff[0] <= '0'){
+						continue;
+					}
+					cl = buff[0] - '0' - 1; 
+					clients[cl].gp[clients[cl].g] = grp;
+					clients[cl].g++;
+					cl = clients[cl].sid;
+					groups[grp].mem[groups[grp].count] = cl;
+					groups[grp].count++;
+				}
+				grp++;
+				write(ip.sid,"server: group created\0",22);
+			}
 		}
-		else{
-			write(cl,ip.name, strlen(ip.name));
-			write(cl,": ",2);
-			write(cl, buff, strlen(buff));
-			write(cl,"\n\0",2);
-		}
+		write(cl,ip.name, strlen(ip.name));
+		write(cl,": ",2);
+		write(cl, buff, strlen(buff));
+		write(cl,"\n\0",2);
 	}
 	printf("%s disconnected\n", ip.name);
 	return NULL;
@@ -269,6 +281,7 @@ int main(int argc,char **argv){
 		clientLen=sizeof(client);
 		temp_a = accept(sd, (struct sockaddr *)&client, &clientLen);
 		clients[cli].sid=temp_a;
+		strcpy(clients[cli].name, "unnamed user");
 		//myRead(clients[cli].sid, clients[cli].name);
 		pthread_create(&thread_ids[cli], NULL, client_handler, (void *)&clients[cli]);
 		clients[cli].g = 0;
