@@ -102,7 +102,6 @@ void* reader(void* input) {
 		}
 
 		if(strcmp(buff, "-call ended") == 0){
-			tryConnect = false;
 			inCall = false;
 		}
 		
@@ -136,7 +135,7 @@ int main(int argc, char **argv){
 			break;
 		}
 		if(strcmp(buff, "-yes") == 0){
-			outCall();
+			k = true;
 		}
 		if(k){
 			k = false;

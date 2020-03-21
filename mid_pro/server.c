@@ -11,6 +11,7 @@
 #include<arpa/inet.h>
 #include<pthread.h>
 #include<time.h>
+#include<basic.c>
 
 int cli = 0;
 void handle_sigint(int sig){ 
@@ -162,7 +163,7 @@ void* client_handler(void* input) {
 			}
 			else if(strcmp(buff,"-no") == 0 && clients[findIndex(ip.sid)].inCall) {
 				write(clients[temp_ind].sid,"-call ended\0",12);
-				clients[temp_ind].inCall = false;
+				//clients[temp_ind].inCall = false;
 				clients[findIndex(ip.sid)].inCall = false;
 			}
 			else if(strcmp(buff,"-yes") == 0 && clients[findIndex(ip.sid)].inCall) {
@@ -215,6 +216,66 @@ void* client_handler(void* input) {
 				}
 				cl = 1;
 			}
+			// else if(strcmp(buff, "-y") == 0) {
+			// 	cl = clients[temp_ind].gp[cl];
+			// 	j = 0;
+			// 	while(j < groups[cl].count){
+			// 		write(clients[groups[cl].mem[j]].sid,"-call connected\0",16);	
+			// 	}
+			// 	temp_ind = findIndex(ip.sid);
+			// 	clients[temp_ind].inCall = true;
+			// 	//pt = &clients[temp_ind].inCall;
+			// 	while(1) {
+			// 		read(ip.sid, buff12, sizeof(buff12));
+			// 		write(cl, buff12, sizeof(buff12));
+			// 		if(strcmp(buff12, "-call ended") == 0) {
+			// 			break;
+			// 		}
+			// 	}
+			// 	cl = 1;
+
+			// }
+			// else if(strcmp(buff, "-grp call") == 0) {
+			// 	temp_ind = findIndex(ip.sid);
+			// 	clients[temp_ind].inCall = true;
+			// 	send_groups(ip.sid)
+			// 	write(ip.sid, "server: select a group\0", 23);
+			// 	myRead(ip.sid, buff);
+			// 	if(strcmp(buff, "-exit") == 0){
+			// 		close(ip.sid);
+			// 		del_entry(ip.sid);
+			// 		break;
+			// 	}
+			// 	if(buff[0] > '9' || buff[0] <= '0'){
+			// 		write(ip.sid,"invalid input\0",14);
+			// 		continue;
+			// 	}
+			// 	cl = buff[0] - '0' - 1; 
+
+			// 	// if(clients[cl].inCall){
+			// 	// 	write(ip.sid, "server: person is busy\0", 23);
+			// 	// 	write(ip.sid, "-call ended\0",11);
+			// 	// 	continue;
+			// 	// }
+			// 	cl = clients[temp_ind].gp[cl];
+			// 	j = 0;
+			// 	while(j < groups[cl].count){
+			// 		if(clients[groups[cl].mem[j]].sid != ip.sid)
+			// 			write(clients[groups[cl].mem[j]].sid,"-incoming call\0", strlen("-incoming call") + 1);	
+			// 	}
+			// 	pt = &clients[temp_ind].inCall;
+			// 	while(1) {
+			// 		read(ip.sid, buff12, sizeof(buff12));
+			// 		while(j < groups[cl].count){
+			// 			if(clients[groups[cl].mem[j]].sid != ip.sid)
+			// 				write(clients[groups[cl].mem[j]].sid, buff12, sizeof(buff12));
+			// 		}
+			// 		if(strcmp(buff12, "-call ended") == 0) {
+			// 			break;
+			// 		}
+			// 	}
+			// 	cl = 1;
+			// }
 			else if(strcmp(buff, "-end") == 0) {
 				cl = 1;
 			}
