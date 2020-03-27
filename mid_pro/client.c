@@ -86,7 +86,7 @@ void outCall() {
 	// char temp1[256] = "-call ended\0";
 	// write(sd,temp1,256);
 }
-void* reader(void* input) {
+void* reader() {
 	char buff[1024];
 	while(1){
 		myRead(sd, buff);
@@ -105,6 +105,10 @@ void* reader(void* input) {
 			inCall = false;
 		}
 		
+		if(strcmp(buff, "-server_c") == 0){
+			close(sd);
+			exit(0);
+		}
 	}
 }
 int main(int argc, char **argv){
@@ -117,13 +121,12 @@ int main(int argc, char **argv){
 
 	//connection establishment
 	sd = socket(AF_INET,SOCK_STREAM,0);
-	int *p = &sd;
 	server.sin_family=AF_INET;
 	server.sin_addr.s_addr=inet_addr(/*"127.0.0.1"*/argv[1]); //same machine
-	server.sin_port=htons(atoi(argv[2])/*5555*/);
+	server.sin_port=htons(atoi(argv[2]));
 	connect(sd,(struct sockaddr *)&server,sizeof(server));
 	printf("Enter your name:\n");
-	pthread_create(&thread_id, NULL, reader, p);
+	pthread_create(&thread_id, NULL, reader, NULL);
 	
 	while(1) {
 		scanf("%99[^\n]",buff); 
