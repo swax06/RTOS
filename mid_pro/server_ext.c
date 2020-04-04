@@ -15,7 +15,7 @@
 int myRead(int sd, char *buff) {
 	int i = 0;
 	char c;
-	while(1){
+	while(256){
 		read(sd, &c, 1);
 		buff[i] = c;
 		i++;

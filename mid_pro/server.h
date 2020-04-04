@@ -3,15 +3,18 @@ struct client{
 	bool inCall, online;
 	char name[10];
 	int gp[10], g;
+	struct session *ptr;
 } *clients[200];
 struct group{
 	char name[10];
-	//int mem[10];
 	struct client *mem[10];
 	int count;
-} groups[20];
+} groups[20], *glptr;
+struct session{
+	struct client *mem[10];
+	int count;
+};
 
-//extern struct client *clients;
 extern int cli, temp_ind, grp;
 extern void handleSigint(int sig);
 extern void* clientHandler(void* input);
