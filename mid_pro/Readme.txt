@@ -1,10 +1,13 @@
 This has been upgraded from chat program, so it supports voice as well as chat features.
+Compiling server: "gcc server.c main.c server_ext.c -o server -lpthread"
+run server: ./server [ip] [port no.]\
 
 How to make call to another online user:
 
-1. Compile client.c using "gcc client.c -o client -lpthread -lpulse-simple -lpulse" and run using "./client [ip of server] [port of server]".
+1. Compile client.c using "gcc client.c -o client -lpthread -lpulse-simple -lpulse" and
+   run using "./client [ip of server] [port of server]".
 
-2. When connected to server, client can set its user name.
+2. When connected to server, client can set his/her user name.
 
 3. Enter "-call" command to initiate call will other online user. This command will display list of online users and client can select
    another user to call.
