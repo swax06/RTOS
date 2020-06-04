@@ -15,14 +15,15 @@
 int myRead(int sd, char *buff) {
 	int i = 0;
 	char c;
-	while(256){
+	while(i < 256){
 		read(sd, &c, 1);
 		buff[i] = c;
 		i++;
 		if(c == '\0'){	
-			break;
+			return 0;
 		}
 	}
+	buff[255] = '\0';
 	return 0;
 }
 

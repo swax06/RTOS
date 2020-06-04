@@ -14,6 +14,8 @@
 
 
 int cli = 0, temp_ind = 0, grp = 0;
+struct client *clients[200];
+struct group groups[20], *glptr;
 
 void handleSigint(int sig){ 
     printf("Exiting... %d\n", sig); 
@@ -25,7 +27,7 @@ void handleSigint(int sig){
 void* clientHandler(void* input) {
 	int j = 0, cl = 100, i = 0, mode = 1, sd = 0;
 	bool f = false;
-	char buff[256], buff1[256], buff2[256] = "-call ended";
+	char buff[256], buff1[290];
 	struct session temp;
 	struct client *loc;
 	sd = *(int*)input;
@@ -42,9 +44,9 @@ void* clientHandler(void* input) {
 		strcpy(clients[cli] -> name, buff);
 		clients[cli] -> g = 0;
 		clients[cli] -> inCall = false;
-		clients[cli] -> online = true;
 		cli++;
 	}
+	clients[i] -> online = true;
 	clients[i] -> sid = sd;
 	loc = clients[i];
 	printf("%s connected\n", loc -> name);
@@ -86,14 +88,18 @@ void* clientHandler(void* input) {
 				mode = 2;
 			}
 			else if(strcmp(buff, "-yes") == 0) {
-				write(loc -> sid,"-call connected\0",16);
+				write(loc -> sid,"-connecting\0",12);
 				loc -> inCall = true;
 				mode = 3;
 			}
-			else if(strcmp(buff,"-no") == 0 || strcmp(buff, "-call ended") == 0) {
+			else if(strcmp(buff,"-no") == 0 || strcmp(buff, "-call end req") == 0) {
+				write(loc -> sid, "-call ended\0", 256);
 				loc -> inCall = false;
 				loc -> ptr -> count--;
 				mode = 1;
+				cl = 100;
+				system("sleep 1");
+				write(loc -> sid, "done\0", 5);
 			}
 			else if(strcmp(buff, "-call") == 0) {
 				loc -> inCall = true;
@@ -114,7 +120,7 @@ void* clientHandler(void* input) {
 				temp.mem[1] = loc;
 				temp.count = 2;
 				write(clients[cl] -> sid,"-incoming call\0", strlen("-incoming call") + 1);
-				write(loc -> sid, "-call connected\0", 16);
+				write(loc -> sid, "-connecting\0", 12);
 				mode = 3;
 			}
 			else if(strcmp(buff, "-grp call") == 0) {
@@ -141,7 +147,7 @@ void* clientHandler(void* input) {
 					}
 					i++;
 				}
-				write(loc -> sid, "-call connected\0", 16);
+				write(loc -> sid, "-connecting\0", 12);
 				mode = 3;
 			}
 			
@@ -181,6 +187,7 @@ void* clientHandler(void* input) {
 		}
 		else {
 			if(mode == 1) { 
+				buff[220] = '\0';
 				sprintf(buff1,"%s : %s%c", loc -> name, buff, '\0');
 				write(cl, buff1, strlen(buff1) + 1);
 			}
@@ -201,11 +208,13 @@ void* clientHandler(void* input) {
 					i++;
 				}
 				if(loc -> ptr -> count == 1) {
-					loc -> inCall = false;
 					write(loc -> sid, "-call ended\0", 256);
+					loc -> inCall = false;
 					loc -> ptr -> count --;
-					//cl = 1;
+					cl = 100;
 					mode = 1;
+					// system("sleep 1");
+					write(loc -> sid, "done\0", 5);
 				}
 			}
 		}

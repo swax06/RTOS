@@ -17,7 +17,7 @@ int main(int argc,char **argv){
 	signal(SIGINT, handleSigint); 
 	struct sockaddr_in server, client;
 	pthread_t thread_ids[200];
-	int sd, clientLen;
+	unsigned int sd, clientLen;
 	sd = socket(AF_INET,SOCK_STREAM,0);
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = inet_addr(argv[1]);
